@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "lakeflow-pipeline-ingestion-framework"
 version = "1.0.0"
-description = "YAML-driven Lakeflow Declarative Pipelines ingestion framework for Databricks Asset Bundles"
+description = "YAML-driven Lakeflow Declarative Pipelines ingestion framework for Declarative Automation Bundles"
 requires-python = ">=3.9"
 dependencies = [
     "jinja2>=3.1",

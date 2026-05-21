@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What This Repo Is
 
-A **pip-installable Python package** (`lakeflow-pipeline-ingestion-framework`) that generates and deploys Databricks Lakeflow Declarative Pipelines from a declarative YAML configuration using **Databricks Asset Bundles (DABs)**. Consumers install the package from GitHub in their own project repos and run the `lakeflow-generate` CLI to produce their bundle artifacts.
+A **pip-installable Python package** (`lakeflow-pipeline-ingestion-framework`) that generates and deploys Databricks Lakeflow Declarative Pipelines from a declarative YAML configuration using **Declarative Automation Bundles (DABs)**. Consumers install the package from GitHub in their own project repos and run the `lakeflow-generate` CLI to produce their bundle artifacts.
 
 This is not a Terraform module. There is no `terraform plan` or `terraform apply`.
 

@@ -1,6 +1,6 @@
 # Lakeflow Pipeline Ingestion Framework (DABs)
 
-A YAML-driven framework for deploying **Lakeflow Declarative Pipelines** and **Databricks Workflow Jobs** using [Databricks Asset Bundles](https://docs.databricks.com/en/dev-tools/bundles/index.html). Define your ingestion pipelines declaratively in YAML — the framework generates all SQL and bundle resource files for you.
+A YAML-driven framework for deploying **Lakeflow Declarative Pipelines** and **Databricks Workflow Jobs** using [Declarative Automation Bundles](https://docs.databricks.com/en/dev-tools/bundles/index.html). Define your ingestion pipelines declaratively in YAML — the framework generates all SQL and bundle resource files for you.
 
 ## How It Works
 
