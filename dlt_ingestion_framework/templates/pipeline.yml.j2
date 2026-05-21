@@ -1,0 +1,31 @@
+resources:
+  pipelines:
+    dlt_pipeline:
+      name: {{ pipeline_name }}
+      catalog: ${var.catalog}
+      schema: ${var.pipeline_schema}
+      serverless: true
+      channel: {{ "PREVIEW" if excel_used else "CURRENT" }}
+      configuration:
+        pipelines.numUpdateRetryAttempts: "1"
+      libraries:
+        - file:
+            path: ./src/dlt_pipeline.sql
+      event_log:
+        catalog: ${var.catalog}
+        schema: ${var.audit_schema}
+        name: pipeline_event_log__{{ pipeline_name }}
+      notifications:
+        - email_recipients:
+{% for email in email_notifications %}
+            - {{ email }}
+{% endfor %}
+          alerts:
+{% for alert in dlt_alerts %}
+            - {{ alert }}
+{% endfor %}
+{% if pipeline_access_group %}
+      permissions:
+        - level: {{ "CAN_MANAGE" if env == "dev" else "CAN_VIEW" }}
+          group_name: {{ pipeline_access_group }}
+{% endif %}

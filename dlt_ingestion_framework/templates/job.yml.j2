@@ -1,0 +1,89 @@
+resources:
+  jobs:
+    dlt_pipeline_job:
+      name: {{ job_name }}
+      performance_target: ${var.performance_target}
+      tags:
+        Project: {{ project }}
+        GitHubRepo: {{ github_repo }}
+        FrameworkUsed: {{ framework_tag }}
+        JobName: {{ job_name }}
+{% for k, v in custom_tags.items() %}
+        {{ k }}: {{ v }}
+{% endfor %}
+      queue:
+        enabled: true
+      email_notifications:
+        on_failure:
+{% for email in email_notifications %}
+          - {{ email }}
+{% endfor %}
+{% if email_on_job_success %}
+        on_success:
+{% for email in email_notifications %}
+          - {{ email }}
+{% endfor %}
+{% endif %}
+{% if schedule %}
+      schedule:
+        quartz_cron_expression: {{ schedule.quartz_cron_expression }}
+        timezone_id: {{ schedule.timezone_id }}
+        pause_status: {{ schedule.pause_status }}
+{% endif %}
+{% if file_trigger %}
+      trigger:
+        file_arrival:
+          url: {{ file_trigger.url }}
+          wait_after_last_change_seconds: {{ file_trigger.wait_after_last_change_seconds }}
+          min_time_between_triggers_seconds: {{ file_trigger.min_time_between_triggers_seconds }}
+{% endif %}
+      tasks:
+        - task_key: 1_trigger_pipeline
+          pipeline_task:
+            pipeline_id: ${resources.pipelines.dlt_pipeline.id}
+
+        - task_key: 2_apply_uc_tags
+          depends_on:
+            - task_key: 1_trigger_pipeline
+          sql_task:
+            warehouse_id: ${var.warehouse_id}
+            file:
+              path: ${workspace.file_path}/src/tagging_script.sql
+              source: WORKSPACE
+
+{% if enable_expectations_report %}
+        - task_key: 3_expectations_report
+          depends_on:
+            - task_key: 1_trigger_pipeline
+          sql_task:
+            warehouse_id: ${var.warehouse_id}
+            file:
+              path: ${workspace.file_path}/src/expectations_report.sql
+              source: WORKSPACE
+
+{% endif %}
+{% if trigger_downstream_job %}
+        - task_key: 4_trigger_downstream_job
+          depends_on:
+            - task_key: 1_trigger_pipeline
+          run_job_task:
+            job_id: {{ downstream_job_id }}
+{% if downstream_job_parameters %}
+            job_parameters:
+{% for k, v in downstream_job_parameters.items() %}
+              {{ k }}: "{{ v }}"
+{% endfor %}
+{% endif %}
+
+{% endif %}
+{% if pipeline_access_group or service_principal_job_runners %}
+      permissions:
+{% if pipeline_access_group %}
+        - level: {{ "CAN_MANAGE" if env == "dev" else "CAN_MANAGE_RUN" }}
+          group_name: {{ pipeline_access_group }}
+{% endif %}
+{% for sp in service_principal_job_runners %}
+        - level: CAN_MANAGE_RUN
+          service_principal_name: {{ sp }}
+{% endfor %}
+{% endif %}

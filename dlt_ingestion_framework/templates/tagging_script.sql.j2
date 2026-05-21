@@ -1,0 +1,71 @@
+{% for pipe in pipelines %}
+-- ============================================================
+-- BRONZE TABLE: {{ pipe.bronze_table_name | upper }}
+-- SILVER TABLE: {{ pipe.silver_table_name | upper }}
+-- TYPE: {{ pipe.table_type | upper }}
+-- ============================================================
+
+-- Tags for Bronze Table
+ALTER TABLE {{ pipe.bronze_table_name }}
+SET TAGS (
+    'Project'                = '{{ Project }}',
+    'GitHubRepo'             = '{{ GitHubRepo }}',
+    'FrameworkUsed'          = '{{ FrameworkUsed }}',
+    'JobName'                = '{{ JobName }}',
+    'PipelineName'           = '{{ PipelineName }}',
+    'Layer'                  = 'Bronze'
+{% for k, v in custom_tags.items() %}
+    ,'{{ k }}' = '{{ v }}'
+{% endfor %}
+);
+
+-- Tags for Silver Table
+ALTER TABLE {{ pipe.silver_table_name }}
+SET TAGS (
+  'Project'                = '{{ Project }}',
+  'GitHubRepo'             = '{{ GitHubRepo }}',
+  'FrameworkUsed'          = '{{ FrameworkUsed }}',
+  'JobName'                = '{{ JobName }}',
+  'PipelineName'           = '{{ PipelineName }}',
+  'Layer'                  = 'Silver',
+  'TableType'              = '{{ pipe.table_type | upper }}'
+{% for k, v in custom_tags.items() %}
+  ,'{{ k }}' = '{{ v }}'
+{% endfor %}
+);
+
+{% if pipe.expectations %}
+-- Tags for Quarantine Table
+ALTER TABLE {{ pipe.silver_table_name | second_to_last_dot_part }}.quarantine_{{ pipe.silver_table_name | last_dot_part }}
+SET TAGS (
+  'Project'                = '{{ Project }}',
+  'GitHubRepo'             = '{{ GitHubRepo }}',
+  'FrameworkUsed'          = '{{ FrameworkUsed }}',
+  'JobName'                = '{{ JobName }}',
+  'PipelineName'           = '{{ PipelineName }}',
+  'Layer'                  = 'Quarantine',
+  'SourceTable'            = '{{ pipe.bronze_table_name }}',
+  'TargetTable'            = '{{ pipe.silver_table_name }}'
+{% for k, v in custom_tags.items() %}
+  ,'{{ k }}' = '{{ v }}'
+{% endfor %}
+);
+
+{% endif %}
+{% if pipe.column_masks %}
+-- Column Masks for Silver Table
+{% for mask in pipe.column_masks %}
+ALTER TABLE {{ pipe.silver_table_name }}
+  ALTER COLUMN {{ mask.column }}
+  SET MASK {{ mask.function }}{% if mask.using_columns %} USING COLUMNS ({{ mask.using_columns | join(', ') }}){% endif %};
+
+{% endfor %}
+{% endif %}
+{% if pipe.row_filter %}
+-- Row Filter for Silver Table
+ALTER TABLE {{ pipe.silver_table_name }}
+  SET ROW FILTER {{ pipe.row_filter.function }}
+  ON ({{ pipe.row_filter.on_columns | join(', ') }});
+
+{% endif %}
+{% endfor %}

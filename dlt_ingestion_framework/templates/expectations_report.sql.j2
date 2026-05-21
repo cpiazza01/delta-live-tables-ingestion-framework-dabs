@@ -1,0 +1,60 @@
+WITH last_update AS (
+  SELECT
+    origin.update_id AS update_id,
+    MIN(timestamp)   AS run_start,
+    MAX(timestamp)   AS run_end
+  FROM {{ audit_schema }}.pipeline_event_log__{{ pipeline_name }}
+  WHERE origin.update_id = (
+    SELECT origin.update_id
+    FROM   {{ audit_schema }}.pipeline_event_log__{{ pipeline_name }}
+    WHERE  timestamp = (SELECT MAX(timestamp) FROM {{ audit_schema }}.pipeline_event_log__{{ pipeline_name }})
+    LIMIT 1
+  )
+  GROUP BY origin.update_id
+),
+quarantine_records AS (
+{% if pipelines_with_expectations %}
+{% for pipe in pipelines_with_expectations %}
+{% if not loop.first %}
+  UNION ALL
+{% endif %}
+  SELECT
+    '{{ pipe.silver_table_name }}' AS table_name,
+    exploded_failure.name          AS expectation_name,
+    exploded_failure.action        AS action,
+    quarantine_time
+  FROM {{ pipe.silver_table_name | second_to_last_dot_part }}.quarantine_{{ pipe.silver_table_name | last_dot_part }}
+  LATERAL VIEW EXPLODE(failed_expectations) fe AS exploded_failure
+  WHERE quarantine_time >= (SELECT run_start FROM last_update)
+    AND quarantine_time <= (SELECT run_end   FROM last_update) + INTERVAL 1 MINUTE
+{% endfor %}
+{% else %}
+  SELECT
+    CAST(NULL AS STRING)    AS table_name,
+    CAST(NULL AS STRING)    AS expectation_name,
+    CAST(NULL AS STRING)    AS action,
+    CAST(NULL AS TIMESTAMP) AS quarantine_time
+  WHERE FALSE
+{% endif %}
+),
+summary AS (
+  SELECT
+    table_name,
+    expectation_name,
+    action,
+    COUNT(*)                           AS failed_record_count,
+    (SELECT update_id FROM last_update) AS pipeline_run_id
+  FROM quarantine_records
+  GROUP BY table_name, expectation_name, action
+)
+SELECT * FROM summary
+UNION ALL
+SELECT
+  'NO QUARANTINE RECORDS' AS table_name,
+  NULL                    AS expectation_name,
+  NULL                    AS action,
+  0                       AS failed_record_count,
+  update_id               AS pipeline_run_id
+FROM last_update
+WHERE NOT EXISTS (SELECT 1 FROM summary)
+ORDER BY table_name, expectation_name;

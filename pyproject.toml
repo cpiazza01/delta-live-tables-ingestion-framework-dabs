@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dlt-ingestion-framework"
+version = "1.0.0"
+description = "YAML-driven DLT ingestion framework for Databricks Asset Bundles"
+requires-python = ">=3.9"
+dependencies = [
+    "jinja2>=3.1",
+    "pyyaml>=6.0",
+]
+
+[project.scripts]
+dlt-generate = "dlt_ingestion_framework.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["dlt_ingestion_framework*"]
+
+[tool.setuptools.package-data]
+dlt_ingestion_framework = ["templates/*"]
