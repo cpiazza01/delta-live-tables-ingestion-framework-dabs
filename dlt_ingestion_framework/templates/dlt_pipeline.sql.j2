@@ -9,7 +9,7 @@
 -- ============================================================
 -- 1. BRONZE LAYER
 -- ============================================================
-CREATE OR REFRESH STREAMING LIVE TABLE {{ pipe.bronze_table_name }}
+CREATE OR REFRESH STREAMING TABLE {{ pipe.bronze_table_name }}
 CLUSTER BY AUTO
 TBLPROPERTIES (
 {% if pipe.source_file_type == "excel" %}
@@ -103,7 +103,7 @@ CREATE TEMPORARY
 {% if pipe.table_type != "materialized" %}
 STREAMING
 {% endif %}
-LIVE VIEW bronze_cleaned_view_{{ pipe.silver_table_name | last_dot_part }}
+VIEW bronze_cleaned_view_{{ pipe.silver_table_name | last_dot_part }}
 AS
 SELECT
 {% for col in pipe.columns %}
@@ -115,9 +115,9 @@ SELECT
   dbx_load_time
 FROM
 {% if pipe.table_type != "materialized" %}
-  STREAM(LIVE.{{ pipe.bronze_table_name }})
+  STREAM({{ pipe.bronze_table_name }})
 {% else %}
-  LIVE.{{ pipe.bronze_table_name }}
+  {{ pipe.bronze_table_name }}
 {% endif %}
 {% if pipe.where_clause %}
 WHERE {{ pipe.where_clause }}
@@ -130,7 +130,7 @@ QUALIFY {{ pipe.qualify_clause }}
 -- ============================================================
 -- 3. QUARANTINE TABLE (ONLY IF EXPECTATIONS EXIST)
 -- ============================================================
-CREATE OR REFRESH {{ "STREAMING LIVE" if pipe.table_type != "materialized" else "LIVE" }} TABLE {{ pipe.silver_table_name | second_to_last_dot_part }}.quarantine_{{ pipe.silver_table_name | last_dot_part }}
+CREATE OR REFRESH {{ "STREAMING TABLE" if pipe.table_type != "materialized" else "MATERIALIZED VIEW" }} {{ pipe.silver_table_name | second_to_last_dot_part }}.quarantine_{{ pipe.silver_table_name | last_dot_part }}
 CLUSTER BY AUTO
 COMMENT 'Rows that failed DLT expectations'
 TBLPROPERTIES (
@@ -155,9 +155,9 @@ SELECT
   )) AS failed_expectations
 FROM
 {% if pipe.table_type != "materialized" %}
-  STREAM(LIVE.bronze_cleaned_view_{{ pipe.silver_table_name | last_dot_part }})
+  STREAM(bronze_cleaned_view_{{ pipe.silver_table_name | last_dot_part }})
 {% else %}
-  LIVE.bronze_cleaned_view_{{ pipe.silver_table_name | last_dot_part }}
+  bronze_cleaned_view_{{ pipe.silver_table_name | last_dot_part }}
 {% endif %}
 WHERE NOT (
 {% for exp in pipe.expectations %}
@@ -171,7 +171,7 @@ WHERE NOT (
 -- 4. SILVER LAYER
 -- ============================================================
 {% if pipe.table_type in ("scd1", "scd2") %}
-CREATE OR REFRESH STREAMING LIVE TABLE {{ pipe.silver_table_name }}
+CREATE OR REFRESH STREAMING TABLE {{ pipe.silver_table_name }}
 {% if pipe.expectations %}
 (
 {% for exp in pipe.expectations %}
@@ -196,8 +196,8 @@ TBLPROPERTIES (
   'TableType'                  = '{{ pipe.table_type | upper }}'
 );
 
-APPLY CHANGES INTO LIVE.{{ pipe.silver_table_name }}
-FROM STREAM(LIVE.bronze_cleaned_view_{{ pipe.silver_table_name | last_dot_part }})
+APPLY CHANGES INTO {{ pipe.silver_table_name }}
+FROM STREAM(bronze_cleaned_view_{{ pipe.silver_table_name | last_dot_part }})
 KEYS ({{ pipe.cdc_conf['keys'] | join(', ') }})
 {% if pipe.cdc_conf.apply_as_delete %}
 APPLY AS DELETE WHEN {{ pipe.cdc_conf.apply_as_delete }}
@@ -207,8 +207,8 @@ APPLY AS TRUNCATE WHEN {{ pipe.cdc_conf.apply_as_truncate }}
 {% endif %}
 SEQUENCE BY {{ pipe.cdc_conf.sequence_by }}
 STORED AS {{ "SCD TYPE 1" if pipe.table_type == "scd1" else "SCD TYPE 2" }};
-{% else %}
-CREATE OR REFRESH {{ "STREAMING LIVE" if pipe.table_type != "materialized" else "LIVE" }} TABLE {{ pipe.silver_table_name }}
+{% elif pipe.table_type == "streaming" %}
+CREATE OR REFRESH STREAMING TABLE {{ pipe.silver_table_name }}
 (
 {% for col in pipe.columns %}
   {{ col.target }} {{ col.target_datatype }} COMMENT '{{ col.comment }}',
@@ -239,12 +239,35 @@ TBLPROPERTIES (
 )
 AS
 SELECT *
-FROM
-{% if pipe.table_type != "materialized" %}
-  STREAM(LIVE.bronze_cleaned_view_{{ pipe.silver_table_name | last_dot_part }})
+FROM STREAM(bronze_cleaned_view_{{ pipe.silver_table_name | last_dot_part }});
 {% else %}
-  LIVE.bronze_cleaned_view_{{ pipe.silver_table_name | last_dot_part }}
-{% endif %};
+CREATE OR REFRESH MATERIALIZED VIEW {{ pipe.silver_table_name }}
+{% if pipe.expectations %}
+(
+{% for exp in pipe.expectations %}
+  {{ "" if loop.first else "," }}CONSTRAINT {{ exp.name }} EXPECT ({{ exp.condition }}) {{ "" if exp.action == "WARN" else "ON VIOLATION " + exp.action }}
+{% endfor %}
+)
+{% endif %}
+CLUSTER BY AUTO
+COMMENT '{{ pipe.description }}'
+TBLPROPERTIES (
+{% if not pipe.reuse_bronze %}
+{% if pipe.source_file_type == "excel" %}
+  'delta.feature.timestampNtz' = 'supported',
+{% endif %}
+{% endif %}
+  'Project'                    = '{{ Project }}',
+  'GitHubRepo'                 = '{{ GitHubRepo }}',
+  'FrameworkUsed'              = '{{ FrameworkUsed }}',
+  'JobName'                    = '{{ JobName }}',
+  'PipelineName'               = '{{ PipelineName }}',
+  'Layer'                      = 'Silver',
+  'TableType'                  = '{{ pipe.table_type | upper }}'
+)
+AS
+SELECT *
+FROM bronze_cleaned_view_{{ pipe.silver_table_name | last_dot_part }};
 {% endif %}
 
 {% endfor %}

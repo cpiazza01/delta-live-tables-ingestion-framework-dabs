@@ -10,7 +10,7 @@ resources:
         pipelines.numUpdateRetryAttempts: "1"
       libraries:
         - file:
-            path: ./src/dlt_pipeline.sql
+            path: ../src/dlt_pipeline.sql
       event_log:
         catalog: ${var.catalog}
         schema: ${var.audit_schema}
