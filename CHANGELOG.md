@@ -4,6 +4,10 @@ All notable changes to this project will be documented here. This project adhere
 
 ---
 
+## [Unreleased]
+
+---
+
 ## [1.0.0] — 2026-05-22
 
 Initial release.
