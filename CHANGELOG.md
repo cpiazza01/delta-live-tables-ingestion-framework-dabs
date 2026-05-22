@@ -10,13 +10,30 @@ All notable changes to this project will be documented here. This project adhere
 
 ## [1.1.2] — 2026-05-22
 
+### Changed
+- **Pydantic v2 schema validation** — replaces hand-rolled `validate_config` and `preprocess_pipeline` with a full Pydantic model hierarchy (`PipelineConfig`, `PipelineEntry`, `CdcConf`, `CsvOptions`, `ExcelOptions`, `ColumnMask`, `RowFilter`, `Column`, `Expectation`, `Schedule`, `FileTrigger`); structured error messages with field paths; defaults handled by the model
+- `pydantic>=2.0` added as a runtime dependency
+
 ---
 
 ## [1.1.1] — 2026-05-22
 
+### Fixed
+- Release workflow now fails early with a clear message when triggered with no new commits since the last tag, preventing accidental duplicate version bumps
+
 ---
 
 ## [1.1.0] — 2026-05-22
+
+### Added
+- **CI workflow** — GitHub Actions runs ruff lint and pytest with coverage on PRs to `main`, pushes to `main`, and manual dispatch
+- **Release workflow** — `workflow_dispatch` with `patch`/`minor`/`major` input; bumps version files, commits, tags, and creates a GitHub Release automatically
+- **`bump-my-version`** — automated version management configured in `pyproject.toml`
+- **`--version` flag** — `lakeflow-generate --version` prints the installed package version
+- **ruff linting** — E, F, I rules enforced in CI and available locally via `pip install -e ".[dev]"`
+- **pytest-cov coverage** — coverage reported on every test run
+- **119-test suite** — covers config validation (`test_validation.py`), DABs variable resolution (`test_resolve_bundle_var.py`), and all five Jinja2 templates (`test_templates.py`)
+- **Claude Code integration** — GitHub workflows for Claude Code review and assistance
 
 ---
 

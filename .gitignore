@@ -13,3 +13,8 @@ venv/
 
 # Databricks
 .databricks/
+
+# Test coverage
+.coverage
+.coverage.*
+htmlcov/

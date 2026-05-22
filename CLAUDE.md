@@ -81,7 +81,7 @@ A single DABs job resource with ordered tasks:
 
 Most changes touch two places:
 
-1. **`lakeflow_ingestion_framework/cli.py`** — add a new config field to `validate_config`, set its default in `preprocess_pipeline`, and add it to the context dict in `build_context`. If the value should come from `databricks.yml` (like `domain` and `catalog` do), add it to the `resolve_bundle_var` calls in `main()` instead.
+1. **`lakeflow_ingestion_framework/cli.py`** — config schema is defined as Pydantic models at the top of the file. Add the new field to the appropriate model (`PipelineEntry` for per-pipeline fields, `PipelineConfig` for top-level fields). Pydantic handles type validation and default values automatically. Then add the field to the context dict in `build_context` so templates can access it. If the value should come from `databricks.yml` (like `domain` and `catalog` do), add it to the `resolve_bundle_var` calls in `main()` instead.
 2. **The relevant `.j2` template** — use Jinja2 syntax (`{% if %}`, `{% for %}`, `{{ expr }}`). DABs interpolations like `${var.catalog}` pass through untouched since they are not `{{ }}` syntax.
 
 ### Jinja2 gotcha: `cdc_conf['keys']`
