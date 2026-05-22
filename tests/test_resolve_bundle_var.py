@@ -1,6 +1,7 @@
 """Tests for resolve_bundle_var — DABs variable resolution from databricks.yml."""
 import pytest
 import yaml
+
 from lakeflow_ingestion_framework.cli import resolve_bundle_var
 
 
