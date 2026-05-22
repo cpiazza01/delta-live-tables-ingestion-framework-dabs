@@ -57,6 +57,8 @@ Edit the `targets` section with your environment-specific values:
 variables:
   domain:
     default: my_domain   # used in workspace root_path and TBLPROPERTIES governance tags
+  audit_schema:
+    default: audit       # schema where the pipeline event log table lives
 
 targets:
   dev:
@@ -69,7 +71,7 @@ targets:
       warehouse_id: abc123def456
 ```
 
-`lakeflow-generate` reads `domain` and `catalog` directly from `databricks.yml` for the target env, so you only set them once.
+`lakeflow-generate` reads `domain`, `catalog`, and `audit_schema` directly from `databricks.yml` for the target env, so you only set them once.
 
 ### 4. Define your pipelines in `pipeline_config.yaml`
 
@@ -144,7 +146,6 @@ Then re-run `lakeflow-generate` and redeploy.
 | `pipeline_access_group` | No | — | Databricks group granted access to the pipeline and job |
 | `service_principal_job_runners` | No | `[]` | Service principals granted `CAN_MANAGE_RUN` on the job |
 | `tags` | No | `{}` | Additional UC tags applied to all tables |
-| `audit_schema` | No | `audit` | Schema where the pipeline event log table lives |
 
 ### Per-pipeline fields
 

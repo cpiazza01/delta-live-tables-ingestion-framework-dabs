@@ -21,3 +21,9 @@ include = ["lakeflow_ingestion_framework*"]
 
 [tool.setuptools.package-data]
 lakeflow_ingestion_framework = ["templates/*"]
+
+[project.optional-dependencies]
+dev = ["pytest>=7.0"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
