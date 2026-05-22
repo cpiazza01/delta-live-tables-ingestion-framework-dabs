@@ -103,7 +103,8 @@ jobs:
         if: steps.check.outputs.skip != 'true'
         run: |
           git add pyproject.toml CHANGELOG.md
-          git commit -m "chore: release v${{ steps.bump.outputs.new_version }} [skip ci]"
+          # Added --no-verify to bypass hooks that trigger lakeflow/DAB validation
+          git commit -m "chore: release v${{ steps.bump.outputs.new_version }} [skip ci]" --no-verify
           git tag "v${{ steps.bump.outputs.new_version }}"
           git push --follow-tags
 
