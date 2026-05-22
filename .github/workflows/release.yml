@@ -36,6 +36,17 @@ jobs:
       - name: Run tests with coverage
         run: python -m pytest
 
+      - name: Check for commits since last release
+        run: |
+          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          if [ -n "$LAST_TAG" ]; then
+            COMMITS=$(git log ${LAST_TAG}..HEAD --oneline | wc -l)
+            if [ "$COMMITS" -eq 0 ]; then
+              echo "No commits since $LAST_TAG — nothing to release."
+              exit 1
+            fi
+          fi
+
       - name: Configure git
         run: |
           git config user.name "github-actions[bot]"
