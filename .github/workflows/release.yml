@@ -52,14 +52,34 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-      - name: Bump version, commit, and tag
+      - name: Bump version files
         id: bump
         run: |
-          bump-my-version bump ${{ github.event.inputs.version_part }}
+          bump-my-version bump ${{ github.event.inputs.version_part }} --no-commit --no-tag
           echo "new_version=$(bump-my-version show current_version)" >> $GITHUB_OUTPUT
 
-      - name: Push commit and tag
-        run: git push --follow-tags
+      - name: Generate release notes
+        uses: orhun/git-cliff-action@v3
+        with:
+          config: cliff.toml
+          args: --unreleased --tag v${{ steps.bump.outputs.new_version }} --strip all
+        env:
+          OUTPUT: /tmp/release_notes.md
+
+      - name: Update CHANGELOG.md
+        uses: orhun/git-cliff-action@v3
+        with:
+          config: cliff.toml
+          args: --tag v${{ steps.bump.outputs.new_version }}
+        env:
+          OUTPUT: CHANGELOG.md
+
+      - name: Commit, tag, and push
+        run: |
+          git add pyproject.toml CHANGELOG.md
+          git commit -m "chore: release v${{ steps.bump.outputs.new_version }}"
+          git tag "v${{ steps.bump.outputs.new_version }}"
+          git push --follow-tags
 
       - name: Create GitHub Release
         env:
@@ -67,4 +87,4 @@ jobs:
         run: |
           gh release create "v${{ steps.bump.outputs.new_version }}" \
             --title "v${{ steps.bump.outputs.new_version }}" \
-            --generate-notes
+            --notes-file /tmp/release_notes.md
