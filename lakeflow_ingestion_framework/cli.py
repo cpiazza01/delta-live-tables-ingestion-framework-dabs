@@ -21,7 +21,6 @@ from pathlib import Path
 import yaml
 from jinja2 import Environment, FileSystemLoader, Undefined
 
-VALID_ENVS = {"dev", "test", "prod"}
 VALID_TABLE_TYPES = {"scd1", "scd2", "streaming", "materialized"}
 VALID_FILE_TYPES = {"parquet", "csv", "excel"}
 FRAMEWORK_TAG = "Lakeflow Pipeline Ingestion Framework"
@@ -46,8 +45,8 @@ def validate_config(config: dict, env: str) -> None:
     if not isinstance(pipelines, list) or not pipelines:
         raise ValueError("Config must contain a top-level 'pipelines' list with at least one entry.")
 
-    if env not in VALID_ENVS:
-        raise ValueError(f"'env' must be one of: {', '.join(sorted(VALID_ENVS))}. Got: '{env}'")
+    if not env:
+        raise ValueError("'env' must be a non-empty string.")
 
     schedule = config.get("schedule")
     file_trigger = config.get("file_trigger")
@@ -114,14 +113,15 @@ def validate_config(config: dict, env: str) -> None:
 # Step 3: resolve catalog from databricks.yml
 # ---------------------------------------------------------------------------
 
-def resolve_bundle_var(bundle_path: Path, env: str, var_name: str) -> str:
+def resolve_bundle_var(bundle_path: Path, env: str, var_name: str, default: str | None = None) -> str:
     """Return the value of a DABs variable for the given target from databricks.yml.
 
     Lookup order:
       1. targets.<env>.variables.<var_name>  (target-specific override)
       2. variables.<var_name>.default        (bundle-level default)
+      3. default argument                    (fallback when var is absent)
 
-    Raises ValueError if neither is found.
+    Raises ValueError if no value is found and no default is provided.
     """
     if not bundle_path.exists():
         raise ValueError(
@@ -139,6 +139,8 @@ def resolve_bundle_var(bundle_path: Path, env: str, var_name: str) -> str:
         value = bundle_var.get("default") if isinstance(bundle_var, dict) else bundle_var
 
     if not value:
+        if default is not None:
+            return default
         raise ValueError(
             f"Could not resolve '{var_name}' for target '{env}' in {bundle_path}. "
             f"Set it under targets.<env>.variables.{var_name} or variables.{var_name}.default."
@@ -226,7 +228,7 @@ def make_jinja_env(templates_dir: Path) -> Environment:
 # Step 6: build shared template context from config
 # ---------------------------------------------------------------------------
 
-def build_context(config: dict, env: str, catalog: str, domain: str) -> dict:
+def build_context(config: dict, env: str, catalog: str, domain: str, audit_schema: str) -> dict:
     """Build the Jinja2 template context dict from the parsed config.
 
     Note on key naming: keys like 'Domain', 'GitHubRepo', 'FrameworkUsed', 'JobName',
@@ -264,7 +266,7 @@ def build_context(config: dict, env: str, catalog: str, domain: str) -> dict:
         "pipelines_with_expectations": pipelines_with_expectations,
         "pipeline_name": pipeline_name,
         "catalog": catalog,
-        "audit_schema": config.get("audit_schema", "audit"),
+        "audit_schema": audit_schema,
         "Domain": domain,
         "GitHubRepo": config["github_repo"],
         "FrameworkUsed": FRAMEWORK_TAG,
@@ -359,8 +361,7 @@ Examples:
     parser.add_argument(
         "--env",
         required=True,
-        choices=sorted(VALID_ENVS),
-        help="Target environment. Substituted for ${env} in YAML path strings.",
+        help="Target environment (e.g. dev, test, prod). Substituted for ${env} in YAML path strings.",
     )
     parser.add_argument(
         "--output-dir",
@@ -398,11 +399,12 @@ Examples:
     try:
         catalog = resolve_bundle_var(bundle_path, args.env, "catalog")
         domain = resolve_bundle_var(bundle_path, args.env, "domain")
+        audit_schema = resolve_bundle_var(bundle_path, args.env, "audit_schema", default="audit")
     except ValueError as exc:
         print(f"Error: {exc}", file=sys.stderr)
         sys.exit(1)
 
-    context = build_context(config, args.env, catalog, domain)
+    context = build_context(config, args.env, catalog, domain, audit_schema)
     templates_dir = Path(__file__).parent / "templates"
     output_dir = Path(args.output_dir)
 
