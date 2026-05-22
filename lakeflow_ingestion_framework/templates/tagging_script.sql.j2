@@ -10,7 +10,7 @@ USE CATALOG {{ catalog }};
 -- Tags for Bronze Table
 ALTER TABLE {{ pipe.bronze_table_name }}
 SET TAGS (
-    'Project'                = '{{ Project }}',
+    'Domain'                 = '{{ Domain }}',
     'GitHubRepo'             = '{{ GitHubRepo }}',
     'FrameworkUsed'          = '{{ FrameworkUsed }}',
     'JobName'                = '{{ JobName }}',
@@ -24,7 +24,7 @@ SET TAGS (
 -- Tags for Silver Table
 ALTER TABLE {{ pipe.silver_table_name }}
 SET TAGS (
-  'Project'                = '{{ Project }}',
+  'Domain'                 = '{{ Domain }}',
   'GitHubRepo'             = '{{ GitHubRepo }}',
   'FrameworkUsed'          = '{{ FrameworkUsed }}',
   'JobName'                = '{{ JobName }}',
@@ -40,7 +40,7 @@ SET TAGS (
 -- Tags for Quarantine Table
 ALTER TABLE {{ pipe.silver_table_name | second_to_last_dot_part }}.quarantine_{{ pipe.silver_table_name | last_dot_part }}
 SET TAGS (
-  'Project'                = '{{ Project }}',
+  'Domain'                 = '{{ Domain }}',
   'GitHubRepo'             = '{{ GitHubRepo }}',
   'FrameworkUsed'          = '{{ FrameworkUsed }}',
   'JobName'                = '{{ JobName }}',
@@ -53,6 +53,20 @@ SET TAGS (
 {% endfor %}
 );
 
+{% endif %}
+{% set tagged_columns = pipe.columns | selectattr('tags') | list %}
+{% if tagged_columns %}
+-- Column Tags for Silver Table
+{% for col in tagged_columns %}
+ALTER TABLE {{ pipe.silver_table_name }}
+  ALTER COLUMN {{ col.target }}
+  SET TAGS (
+{% for k, v in col.tags.items() %}
+    '{{ k }}' = '{{ v }}'{{ "," if not loop.last else "" }}
+{% endfor %}
+  );
+
+{% endfor %}
 {% endif %}
 {% if pipe.column_masks %}
 -- Column Masks for Silver Table

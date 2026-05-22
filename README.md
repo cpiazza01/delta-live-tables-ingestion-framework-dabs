@@ -55,8 +55,8 @@ Edit the `targets` section with your environment-specific values:
 
 ```yaml
 variables:
-  project:
-    default: my_project   # used in workspace root_path and TBLPROPERTIES governance tags
+  domain:
+    default: my_domain   # used in workspace root_path and TBLPROPERTIES governance tags
 
 targets:
   dev:
@@ -69,7 +69,7 @@ targets:
       warehouse_id: abc123def456
 ```
 
-`lakeflow-generate` reads `project` and `catalog` directly from `databricks.yml` for the target env, so you only set them once.
+`lakeflow-generate` reads `domain` and `catalog` directly from `databricks.yml` for the target env, so you only set them once.
 
 ### 4. Define your pipelines in `pipeline_config.yaml`
 
@@ -177,7 +177,12 @@ columns:
     target: "target_column_name"     # column name in the silver table
     target_datatype: "STRING"        # Databricks SQL type
     comment: "Human-readable description"
+    tags:                            # optional: Unity Catalog column tags
+      pii: "true"
+      data_category: "email"
 ```
+
+Column tags are applied via `ALTER TABLE ... ALTER COLUMN ... SET TAGS` in the `2_apply_uc_tags` job task. Omit `tags` entirely for columns that don't need tagging.
 
 ### `cdc_conf` block (required for `scd1` / `scd2`)
 

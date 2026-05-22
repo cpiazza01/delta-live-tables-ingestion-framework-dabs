@@ -226,12 +226,12 @@ def make_jinja_env(templates_dir: Path) -> Environment:
 # Step 6: build shared template context from config
 # ---------------------------------------------------------------------------
 
-def build_context(config: dict, env: str, catalog: str, project: str) -> dict:
+def build_context(config: dict, env: str, catalog: str, domain: str) -> dict:
     """Build the Jinja2 template context dict from the parsed config.
 
-    Note on key naming: keys like 'Project', 'GitHubRepo', 'FrameworkUsed', 'JobName',
+    Note on key naming: keys like 'Domain', 'GitHubRepo', 'FrameworkUsed', 'JobName',
     'PipelineName' are PascalCase because they map directly to TBLPROPERTIES key names
-    in the generated SQL. The lowercase equivalents ('project', 'job_name', etc.) are
+    in the generated SQL. The lowercase equivalents ('domain', 'job_name', etc.) are
     separate entries used by the YAML resource templates.
     """
     pipeline_name = config["pipeline_name"]
@@ -265,14 +265,14 @@ def build_context(config: dict, env: str, catalog: str, project: str) -> dict:
         "pipeline_name": pipeline_name,
         "catalog": catalog,
         "audit_schema": config.get("audit_schema", "audit"),
-        "Project": project,
+        "Domain": domain,
         "GitHubRepo": config["github_repo"],
         "FrameworkUsed": FRAMEWORK_TAG,
         "JobName": job_name,
         "PipelineName": pipeline_name,
         "custom_tags": custom_tags,
         # Resource template variables
-        "project": project,
+        "domain": domain,
         "github_repo": config["github_repo"],
         "framework_tag": FRAMEWORK_TAG,
         "job_name": job_name,
@@ -323,7 +323,7 @@ def render_and_write(context: dict, templates_dir: Path, output_dir: Path) -> No
         out_path = transformations_dir / filename
         # Merge the shared context with the per-pipeline dict so the template
         # has access to both pipeline-level vars (pipe.*) and shared vars
-        # (pipeline_name, Project, etc.).
+        # (pipeline_name, Domain, etc.).
         out_path.write_text(sql_template.render({**context, "pipe": pipe}), encoding="utf-8")
         print(f"  Generated: {out_path}")
 
@@ -397,12 +397,12 @@ Examples:
     bundle_path = Path(args.bundle_config)
     try:
         catalog = resolve_bundle_var(bundle_path, args.env, "catalog")
-        project = resolve_bundle_var(bundle_path, args.env, "project")
+        domain = resolve_bundle_var(bundle_path, args.env, "domain")
     except ValueError as exc:
         print(f"Error: {exc}", file=sys.stderr)
         sys.exit(1)
 
-    context = build_context(config, args.env, catalog, project)
+    context = build_context(config, args.env, catalog, domain)
     templates_dir = Path(__file__).parent / "templates"
     output_dir = Path(args.output_dir)
 

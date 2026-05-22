@@ -15,7 +15,7 @@ TBLPROPERTIES (
   'delta.feature.timestampNtz' = 'supported',
 {% endif %}
   'delta.columnMapping.mode'   = 'name',
-  'Project'                    = '{{ Project }}',
+  'Domain'                     = '{{ Domain }}',
   'GitHubRepo'                 = '{{ GitHubRepo }}',
   'FrameworkUsed'              = '{{ FrameworkUsed }}',
   'JobName'                    = '{{ JobName }}',
@@ -129,7 +129,7 @@ CREATE OR REFRESH {{ "STREAMING TABLE" if pipe.table_type != "materialized" else
 CLUSTER BY AUTO
 COMMENT 'Rows that failed DLT expectations'
 TBLPROPERTIES (
-  'Project'                = '{{ Project }}',
+  'Domain'                 = '{{ Domain }}',
   'GitHubRepo'             = '{{ GitHubRepo }}',
   'FrameworkUsed'          = '{{ FrameworkUsed }}',
   'JobName'                = '{{ JobName }}',
@@ -182,7 +182,7 @@ TBLPROPERTIES (
   'delta.feature.timestampNtz' = 'supported',
 {% endif %}
 {% endif %}
-  'Project'                    = '{{ Project }}',
+  'Domain'                     = '{{ Domain }}',
   'GitHubRepo'                 = '{{ GitHubRepo }}',
   'FrameworkUsed'              = '{{ FrameworkUsed }}',
   'JobName'                    = '{{ JobName }}',
@@ -224,7 +224,7 @@ TBLPROPERTIES (
   'delta.feature.timestampNtz' = 'supported',
 {% endif %}
 {% endif %}
-  'Project'                    = '{{ Project }}',
+  'Domain'                     = '{{ Domain }}',
   'GitHubRepo'                 = '{{ GitHubRepo }}',
   'FrameworkUsed'              = '{{ FrameworkUsed }}',
   'JobName'                    = '{{ JobName }}',
@@ -252,7 +252,7 @@ TBLPROPERTIES (
   'delta.feature.timestampNtz' = 'supported',
 {% endif %}
 {% endif %}
-  'Project'                    = '{{ Project }}',
+  'Domain'                     = '{{ Domain }}',
   'GitHubRepo'                 = '{{ GitHubRepo }}',
   'FrameworkUsed'              = '{{ FrameworkUsed }}',
   'JobName'                    = '{{ JobName }}',
