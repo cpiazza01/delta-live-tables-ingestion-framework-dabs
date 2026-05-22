@@ -300,7 +300,7 @@ def build_context(config: dict, env: str, catalog: str, domain: str, audit_schem
 # Step 7: render and write all outputs
 # ---------------------------------------------------------------------------
 
-def render_and_write(context: dict, templates_dir: Path, output_dir: Path) -> None:
+def render_and_write(context: dict, templates_dir: Path, output_dir: Path, dry_run: bool = False) -> None:
     """Render all templates and write output files.
 
     lakeflow_pipeline.sql.j2 is rendered once per pipeline entry into
@@ -310,12 +310,15 @@ def render_and_write(context: dict, templates_dir: Path, output_dir: Path) -> No
 
     All other templates (tagging script, expectations report, pipeline.yml,
     job.yml) are rendered once using the full shared context.
+
+    When dry_run is True, templates are rendered but no files are written.
     """
     jinja_env = make_jinja_env(templates_dir)
     sql_template = jinja_env.get_template("lakeflow_pipeline.sql.j2")
 
     transformations_dir = output_dir / "src" / "transformations"
-    transformations_dir.mkdir(parents=True, exist_ok=True)
+    if not dry_run:
+        transformations_dir.mkdir(parents=True, exist_ok=True)
 
     for pipe in context["pipelines"]:
         # Derive filename from the last two parts of the silver table name:
@@ -326,8 +329,12 @@ def render_and_write(context: dict, templates_dir: Path, output_dir: Path) -> No
         # Merge the shared context with the per-pipeline dict so the template
         # has access to both pipeline-level vars (pipe.*) and shared vars
         # (pipeline_name, Domain, etc.).
-        out_path.write_text(sql_template.render({**context, "pipe": pipe}), encoding="utf-8")
-        print(f"  Generated: {out_path}")
+        content = sql_template.render({**context, "pipe": pipe})
+        if dry_run:
+            print(f"  [dry-run] Would write: {out_path}")
+        else:
+            out_path.write_text(content, encoding="utf-8")
+            print(f"  Generated: {out_path}")
 
     once_outputs = {
         "src/tagging_script.sql": jinja_env.get_template("tagging_script.sql.j2").render(context),
@@ -338,9 +345,12 @@ def render_and_write(context: dict, templates_dir: Path, output_dir: Path) -> No
 
     for rel_path, content in once_outputs.items():
         out_path = output_dir / rel_path
-        out_path.parent.mkdir(parents=True, exist_ok=True)
-        out_path.write_text(content, encoding="utf-8")
-        print(f"  Generated: {out_path}")
+        if dry_run:
+            print(f"  [dry-run] Would write: {out_path}")
+        else:
+            out_path.parent.mkdir(parents=True, exist_ok=True)
+            out_path.write_text(content, encoding="utf-8")
+            print(f"  Generated: {out_path}")
 
 
 # ---------------------------------------------------------------------------
@@ -372,6 +382,11 @@ Examples:
         "--bundle-config",
         default="databricks.yml",
         help="Path to databricks.yml (default: databricks.yml in current directory)",
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Render templates and print output paths without writing any files.",
     )
     args = parser.parse_args()
 
@@ -408,8 +423,9 @@ Examples:
     templates_dir = Path(__file__).parent / "templates"
     output_dir = Path(args.output_dir)
 
-    print(f"Generating bundle files for env='{args.env}', pipeline='{config['pipeline_name']}'...")
-    render_and_write(context, templates_dir, output_dir)
+    mode = "[dry-run] " if args.dry_run else ""
+    print(f"{mode}Generating bundle files for env='{args.env}', pipeline='{config['pipeline_name']}'...")
+    render_and_write(context, templates_dir, output_dir, dry_run=args.dry_run)
     print("\nDone. Next steps:")
     print("  1. Review the generated files in src/transformations/ and resources/")
     print("  2. Set your env-specific variables in databricks.yml targets")
