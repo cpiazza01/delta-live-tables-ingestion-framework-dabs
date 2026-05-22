@@ -1,6 +1,8 @@
 name: Release
 
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
     inputs:
       version_part:
@@ -36,29 +38,51 @@ jobs:
       - name: Run tests with coverage
         run: python -m pytest
 
-      - name: Check for commits since last release
+      - name: Check whether a release is needed
+        id: check
         run: |
           LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+
+          # No commits since last tag — nothing to release
           if [ -n "$LAST_TAG" ]; then
-            COMMITS=$(git log ${LAST_TAG}..HEAD --oneline | wc -l)
-            if [ "$COMMITS" -eq 0 ]; then
-              echo "No commits since $LAST_TAG — nothing to release."
-              exit 1
+            COUNT=$(git log ${LAST_TAG}..HEAD --oneline | wc -l)
+            if [ "$COUNT" -eq 0 ]; then
+              echo "No commits since $LAST_TAG — skipping."
+              echo "skip=true" >> $GITHUB_OUTPUT
+              exit 0
             fi
           fi
 
+          # On push: only release for releasable commit types (feat/fix/refactor)
+          # chore/docs/ci-only pushes are skipped; use workflow_dispatch for those
+          if [ "${{ github.event_name }}" != "workflow_dispatch" ]; then
+            RELEASABLE=$(git log ${LAST_TAG}..HEAD --format="%s" | grep -cE "^(feat|fix|refactor):" || true)
+            if [ "$RELEASABLE" -eq 0 ]; then
+              echo "No releasable commits (feat/fix/refactor) — skipping automatic release."
+              echo "skip=true" >> $GITHUB_OUTPUT
+              exit 0
+            fi
+          fi
+
+          echo "skip=false" >> $GITHUB_OUTPUT
+
       - name: Configure git
+        if: steps.check.outputs.skip != 'true'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
       - name: Bump version files
         id: bump
+        if: steps.check.outputs.skip != 'true'
         run: |
-          bump-my-version bump ${{ github.event.inputs.version_part }} --no-commit --no-tag
+          # workflow_dispatch: use selected part; push: default to patch
+          PART="${{ inputs.version_part || 'patch' }}"
+          bump-my-version bump "$PART" --no-commit --no-tag
           echo "new_version=$(bump-my-version show current_version)" >> $GITHUB_OUTPUT
 
       - name: Generate release notes
+        if: steps.check.outputs.skip != 'true'
         uses: orhun/git-cliff-action@v3
         with:
           config: cliff.toml
@@ -67,6 +91,7 @@ jobs:
           OUTPUT: /tmp/release_notes.md
 
       - name: Update CHANGELOG.md
+        if: steps.check.outputs.skip != 'true'
         uses: orhun/git-cliff-action@v3
         with:
           config: cliff.toml
@@ -75,13 +100,15 @@ jobs:
           OUTPUT: CHANGELOG.md
 
       - name: Commit, tag, and push
+        if: steps.check.outputs.skip != 'true'
         run: |
           git add pyproject.toml CHANGELOG.md
-          git commit -m "chore: release v${{ steps.bump.outputs.new_version }}"
+          git commit -m "chore: release v${{ steps.bump.outputs.new_version }} [skip ci]"
           git tag "v${{ steps.bump.outputs.new_version }}"
           git push --follow-tags
 
       - name: Create GitHub Release
+        if: steps.check.outputs.skip != 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
