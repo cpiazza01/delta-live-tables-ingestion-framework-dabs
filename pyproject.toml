@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "lakeflow-pipeline-ingestion-framework"
-version = "1.1.4"
+version = "1.1.2"
 description = "YAML-driven Lakeflow Declarative Pipelines ingestion framework for Declarative Automation Bundles"
 requires-python = ">=3.9"
 dependencies = [
