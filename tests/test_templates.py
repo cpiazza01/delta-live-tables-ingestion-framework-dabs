@@ -10,9 +10,7 @@ Table naming mirrors the companion example repo:
   bronze: enterprise_dev.bronze.<table>
   silver: enterprise_dev.silver.<table>
 """
-import pytest
-from tests.helpers import make_pipe, make_context
-
+from tests.helpers import make_context, make_pipe
 
 # ===========================================================================
 # lakeflow_pipeline.sql.j2
@@ -81,7 +79,10 @@ class TestLakeflowPipelineSql:
         # multiple Excel sheets must produce a UNION ALL query with per-sheet source_sheet_name
         pipe = make_pipe(
             source_file_type="excel",
-            excel_options={"headerRows": 0, "inferSchema": False, "dataAddress": "", "sheet_names": ["January", "February"]},
+            excel_options={
+                "headerRows": 0, "inferSchema": False, "dataAddress": "",
+                "sheet_names": ["January", "February"],
+            },
         )
         out = self.render(jinja_env, pipe)
         assert "UNION ALL" in out
@@ -430,7 +431,9 @@ class TestExpectationsReport:
         # when a pipeline has expectations, its quarantine table must be queried
         pipe = make_pipe(
             silver_table_name="enterprise_dev.silver.patients",
-            expectations=[{"name": "member_id_not_null", "condition": "member_id IS NOT NULL", "action": "FAIL UPDATE"}],
+            expectations=[
+                {"name": "member_id_not_null", "condition": "member_id IS NOT NULL", "action": "FAIL UPDATE"},
+            ],
         )
         ctx = make_context(pipes=[pipe])
         ctx["pipelines_with_expectations"] = [pipe]
@@ -443,14 +446,18 @@ class TestExpectationsReport:
         # must UNION ALL their quarantine tables
         patients_pipe = make_pipe(
             silver_table_name="enterprise_dev.silver.patients",
-            expectations=[{"name": "member_id_not_null", "condition": "member_id IS NOT NULL", "action": "FAIL UPDATE"}],
+            expectations=[
+                {"name": "member_id_not_null", "condition": "member_id IS NOT NULL", "action": "FAIL UPDATE"},
+            ],
         )
         encounters_pipe = make_pipe(
             bronze_table_name="enterprise_dev.bronze.encounters",
             silver_table_name="enterprise_dev.silver.encounters",
             table_type="streaming",
             cdc_conf={},
-            expectations=[{"name": "encounter_id_not_null", "condition": "encounter_id IS NOT NULL", "action": "FAIL UPDATE"}],
+            expectations=[
+                {"name": "encounter_id_not_null", "condition": "encounter_id IS NOT NULL", "action": "FAIL UPDATE"},
+            ],
         )
         ctx = make_context(pipes=[patients_pipe, encounters_pipe])
         ctx["pipelines_with_expectations"] = [patients_pipe, encounters_pipe]

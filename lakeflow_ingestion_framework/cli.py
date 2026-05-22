@@ -14,8 +14,11 @@ Usage:
     lakeflow-generate --config pipeline_config.yaml --env prod
 """
 
+from __future__ import annotations
+
 import argparse
 import sys
+from importlib.metadata import version as _pkg_version
 from pathlib import Path
 
 import yaml
@@ -387,6 +390,11 @@ Examples:
         "--dry-run",
         action="store_true",
         help="Render templates and print output paths without writing any files.",
+    )
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=f"lakeflow-generate {_pkg_version('lakeflow-pipeline-ingestion-framework')}",
     )
     args = parser.parse_args()
 

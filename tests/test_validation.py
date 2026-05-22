@@ -1,8 +1,8 @@
 """Tests for validate_config and substitute_env."""
 import pytest
-from lakeflow_ingestion_framework.cli import validate_config, substitute_env
-from tests.helpers import base_config
 
+from lakeflow_ingestion_framework.cli import substitute_env, validate_config
+from tests.helpers import base_config
 
 # ---------------------------------------------------------------------------
 # substitute_env
@@ -183,7 +183,11 @@ def test_schedule_and_file_trigger_mutually_exclusive():
     # only one trigger type may be configured at a time
     cfg = base_config(
         schedule={"quartz_cron_expression": "0 0 6 * * ?", "timezone_id": "UTC", "pause_status": "UNPAUSED"},
-        file_trigger={"url": "s3://bucket/", "wait_after_last_change_seconds": 300, "min_time_between_triggers_seconds": 3600},
+        file_trigger={
+            "url": "s3://bucket/",
+            "wait_after_last_change_seconds": 300,
+            "min_time_between_triggers_seconds": 3600,
+        },
     )
     with pytest.raises(ValueError, match="mutually exclusive"):
         validate_config(cfg, "dev")
