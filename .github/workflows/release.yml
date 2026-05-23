@@ -106,7 +106,8 @@ jobs:
           # Added --no-verify to bypass hooks that trigger lakeflow/DAB validation
           git commit -m "chore: release v${{ steps.bump.outputs.new_version }} [skip ci]" --no-verify
           git tag "v${{ steps.bump.outputs.new_version }}"
-          git push --follow-tags
+          git push
+          git push origin "v${{ steps.bump.outputs.new_version }}"
 
       - name: Create GitHub Release
         if: steps.check.outputs.skip != 'true'
